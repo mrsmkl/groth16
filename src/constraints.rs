@@ -374,6 +374,32 @@ where
     }
 }
 
+use ark_r1cs_std::prelude::CondSelectGadget;
+use ark_ff::Field;
+
+impl<E, P> CondSelectGadget<E::Fq> for VerifyingKeyVar<E, P>
+where
+    E: PairingEngine,
+    P: PairingVar<E>,
+{
+    fn conditionally_select(
+        cond: &Boolean<E::Fq>,
+        true_value: &Self,
+        false_value: &Self,
+    ) -> Result<Self, SynthesisError> {
+        let alpha_g1 = cond.select(&true_value.alpha_g1, &false_value.alpha_g1)?;
+        let beta_g2 = cond.select(&true_value.beta_g2, &false_value.beta_g2)?;
+        let gamma_g2 = cond.select(&true_value.gamma_g2, &false_value.gamma_g2)?;
+        let delta_g2 = cond.select(&true_value.delta_g2, &false_value.delta_g2)?;
+        let mut gamma_abc_g1 = vec![];
+        for i in 0..true_value.gamma_abc_g1.len() {
+            gamma_abc_g1.push(cond.select(&true_value.gamma_abc_g1[i], &false_value.gamma_abc_g1[i])?);
+        }
+
+        Ok(Self { alpha_g1, beta_g2, gamma_g2, delta_g2, gamma_abc_g1 })
+    }
+}
+
 impl<E, P> ToBytesGadget<E::Fq> for VerifyingKeyVar<E, P>
 where
     E: PairingEngine,
@@ -467,7 +493,25 @@ mod test {
             num_variables: 25,
         };
 
+        /*
+        let params = crate::generate_random_parameters(circ.clone(), &mut rng).unwrap();
+        let pk = params.pk;
+        let vk = params.vk;
+        */
+
         let (pk, vk) = TestSNARK::setup(circ, &mut rng).unwrap();
+
+        let a = MNT4Fr::rand(&mut rng);
+        let b = MNT4Fr::rand(&mut rng);
+        let mut c = a;
+        c.mul_assign(&b);
+
+        let circ = Circuit {
+            a: Some(a.clone()),
+            b: Some(b.clone()),
+            num_constraints: 100,
+            num_variables: 25,
+        };
 
         let proof = TestSNARK::prove(&pk, circ.clone(), &mut rng).unwrap();
 
@@ -506,6 +550,8 @@ mod test {
         .enforce_equal(&Boolean::constant(true))
         .unwrap();
 
+        println!("constraints {}", cs.num_constraints());
+
         assert!(
             cs.is_satisfied().unwrap(),
             "Constraints not satisfied: {}",
@@ -525,6 +571,8 @@ mod test {
             .unwrap()
             .enforce_equal(&Boolean::constant(true))
             .unwrap();
+
+        println!("constraints {}", cs.num_constraints());
 
         assert!(
             cs.is_satisfied().unwrap(),
