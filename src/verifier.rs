@@ -24,6 +24,7 @@ pub fn prepare_inputs<E: PairingEngine>(
     public_inputs: &[E::Fr],
 ) -> R1CSResult<E::G1Projective> {
     if (public_inputs.len() + 1) != pvk.vk.gamma_abc_g1.len() {
+        println!("inputs {}, key {}", public_inputs.len(), pvk.vk.gamma_abc_g1.len());
         return Err(SynthesisError::MalformedVerifyingKey);
     }
 

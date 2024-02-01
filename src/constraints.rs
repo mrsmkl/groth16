@@ -375,7 +375,7 @@ where
 }
 
 use ark_r1cs_std::prelude::CondSelectGadget;
-use ark_ff::Field;
+// use ark_ff::Field;
 
 impl<E, P> CondSelectGadget<E::Fq> for VerifyingKeyVar<E, P>
 where
